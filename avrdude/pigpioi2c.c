@@ -34,7 +34,11 @@
 #include <ctype.h>
 #include <unistd.h>
 
+#if HAVE_PIGPIOD_IF2_H
 #include <pigpiod_if2.h>
+#elif HAVE_PIGPIO_H
+#include <pigpio.h>
+#endif
 
 #include "avrdude.h"
 #include "libavrdude.h"
@@ -49,9 +53,9 @@ static unsigned int current_addr = 0xffff;
  */
 struct pdata
 {
-    unsigned int device;
-    unsigned int buffersize;
-    unsigned int memsize;
+    unsigned short device;
+    unsigned short buffersize;
+    unsigned short memsize;
     char address[64];
     char port[16];
     int handle;
@@ -76,6 +80,7 @@ static void pigpioi2c_teardown(PROGRAMMER *pgm)
     free(pgm->cookie);
 }
 
+#if HAVE_LIBPIGPIOD_IF2
 static int pigpioi2c_comm(PROGRAMMER *pgm, uint8_t *buf, int len, uint8_t * reply, int reply_len)
 {
 	memset(reply, 0, reply_len);
@@ -90,8 +95,7 @@ static int pigpioi2c_comm(PROGRAMMER *pgm, uint8_t *buf, int len, uint8_t * repl
 	send_buffer[5 + len] = 6; //read
 	send_buffer[5 + len + 1] = reply_len;
 	send_buffer[5 + len + 2] = 0; //end
-	int ret = i2c_zip(PDATA(pgm)->handle,PDATA(pgm)->target_dev, send_buffer, send_len, reply, reply_len);
-	sleep(1);
+	int ret = i2c_zip(PDATA(pgm)->handle, PDATA(pgm)->target_dev, send_buffer, send_len, reply, reply_len);
 	printf("DEBUG i2c_zip return %d on %02x reply ", ret, buf[0]);
 	int i = 0;
 	for(i = 0; i < reply_len; i++)
@@ -106,6 +110,19 @@ static int pigpioi2c_comm(PROGRAMMER *pgm, uint8_t *buf, int len, uint8_t * repl
 	}
 	return 0;
 }
+#endif
+
+#if HAVE_LIBPIGPIO
+static int pigpioi2c_comm(PROGRAMMER *pgm, uint8_t *buf, int len, uint8_t * reply, int reply_len)
+{
+    i2cSwitchCombined(1);
+    if (i2cWriteDevice(PDATA(pgm)->target_dev, buf, len) < 0)
+        return -1;
+    if (i2cReadDevice(PDATA(pgm)->target_dev, reply, reply_len) < 0)
+        return -1;
+    return 0;
+}
+#endif
 
 
 static int pigpioi2c_send_16(PROGRAMMER *pgm, uint8_t command, uint16_t param, uint8_t *reply, int reply_len)
@@ -403,6 +420,7 @@ static int pigpioi2c_open(PROGRAMMER *pgm, char *port)
         avrdude_message(MSG_INFO, "Device address not set, use -x device=<addr>\n");
         return -1;
     }
+#if HAVE_LIBPIGPIOD_IF2
     if (PDATA(pgm)->address[0] == 0)
     {
         avrdude_message(MSG_INFO, "Host address not set, use -x host=<addr>\n");
@@ -413,10 +431,16 @@ static int pigpioi2c_open(PROGRAMMER *pgm, char *port)
         avrdude_message(MSG_INFO, "Port not set, use -x port=<port>\n");
         return -1;
     }
+#endif
 
     strcpy(pgm->port, port);
 
     //initialise pigpiod
+#if HAVE_LIBPIGPIO
+    gpioInitialise();
+    PDATA(pgm)->target_dev = i2cOpen(1, PDATA(pgm)->device, 0);
+#endif
+#if HAVE_LIBPIGPIOD_IF2
     PDATA(pgm)->handle = pigpio_start(PDATA(pgm)->address, PDATA(pgm)->port);
     if (PDATA(pgm)->handle < 0)
     {
@@ -424,6 +448,7 @@ static int pigpioi2c_open(PROGRAMMER *pgm, char *port)
         return -1;
     }
     PDATA(pgm)->target_dev = i2c_open(PDATA(pgm)->handle, 1, PDATA(pgm)->device, 0);
+#endif
     if (PDATA(pgm)->target_dev < 0 )
     {
     	//TODO: add more specific error reporting
@@ -465,8 +490,14 @@ static int pigpioi2c_open(PROGRAMMER *pgm, char *port)
 static void pigpioi2c_close(PROGRAMMER *pgm)
 {
     pigpioi2c_send_prog_exit_command(pgm);
-    i2c_close(PDATA(pgm)->handle, PDATA(pgm)->target_dev);
+#if HAVE_LIBPIGPIOD_IF2
     pigpio_stop(PDATA(pgm)->handle);
+    i2c_close(PDATA(pgm)->handle, PDATA(pgm)->target_dev);
+#endif
+#if HAVE_LIBPIGPIO
+    i2cClose(PDATA(pgm)->target_dev);
+    gpioTerminate();
+#endif
     pgm->fd.ifd = -1;
 }
 
@@ -513,8 +544,6 @@ static int pigpioi2c_page_erase(PROGRAMMER *pgm, AVRPART *p, AVRMEM *m, unsigned
 
 static int pigpioi2c_read_byte(PROGRAMMER *pgm, AVRPART *p, AVRMEM *m,unsigned long addr, unsigned char *value)
 {
-    char cmd;
-
     if (strcmp(m->desc, "flash") == 0)
     {
         return pigpioi2c_read_byte_flash(pgm, p, m, addr, value);
@@ -558,8 +587,6 @@ static int pigpioi2c_paged_load(PROGRAMMER *pgm, AVRPART *p, AVRMEM *m,unsigned 
 {
     pigpioi2c_set_addr(pgm, addr);
 
-    char buf[128];
-
     while (n_bytes)
     {
     	if (pigpioi2c_send_read_command(pgm, 16, &m->buf[addr]) < 0)
@@ -582,8 +609,6 @@ static int pigpioi2c_paged_load(PROGRAMMER *pgm, AVRPART *p, AVRMEM *m,unsigned 
 /* Signature byte reads are always 3 bytes. */
 static int pigpioi2c_read_sig_bytes(PROGRAMMER *pgm, AVRPART *p, AVRMEM *m)
 {
-    unsigned char tmp;
-
     if (m->size < 3)
     {
         avrdude_message(MSG_INFO, "%s: memsize too small for sig byte read", progname);

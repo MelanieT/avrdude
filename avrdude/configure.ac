@@ -427,7 +427,7 @@ fi
 
 # If we are compiling with gcc, enable all warning and make warnings errors.
 if test "$GCC" = yes; then
-    ENABLE_WARNINGS="-Wall"
+    ENABLE_WARNINGS="-Wall -Wno-strict-aliasing"
 
 	# does this compiler support -Wno-pointer-sign ?
 	AC_MSG_CHECKING([if gcc accepts -Wno-pointer-sign ])
