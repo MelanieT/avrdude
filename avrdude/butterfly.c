@@ -49,6 +49,8 @@
 
 #include "butterfly.h"
 
+int use_extended_addr = 0;
+
 /*
  * Private data for this programmer.
  */
@@ -355,6 +357,8 @@ static int butterfly_initialize(PROGRAMMER * pgm, AVRPART * p)
   if (butterfly_vfy_cmd_sent(pgm, "select device") < 0)
       return -1;
 
+  if (devtype_1st & 0x80) // Careminster extension, XMEGA types with > 128kb
+    use_extended_addr = 1;
   if (verbose)
     avrdude_message(MSG_INFO, "%s: devcode selected: 0x%02x\n",
                     progname, (unsigned)buf[1]);
@@ -455,7 +459,7 @@ static int butterfly_write_byte(PROGRAMMER * pgm, AVRPART * p, AVRMEM * m,
 {
   char cmd[6];
   int size;
-  int use_ext_addr = m->op[AVR_OP_LOAD_EXT_ADDR] != NULL;
+  int use_ext_addr = (m->op[AVR_OP_LOAD_EXT_ADDR] != NULL) | use_extended_addr;
 
   if ((strcmp(m->desc, "flash") == 0) || (strcmp(m->desc, "eeprom") == 0))
   {
@@ -500,7 +504,7 @@ static int butterfly_read_byte_flash(PROGRAMMER * pgm, AVRPART * p, AVRMEM * m,
   static int cached = 0;
   static unsigned char cvalue;
   static unsigned long caddr;
-  int use_ext_addr = m->op[AVR_OP_LOAD_EXT_ADDR] != NULL;
+  int use_ext_addr = (m->op[AVR_OP_LOAD_EXT_ADDR] != NULL) | use_extended_addr;
 
   if (cached && ((caddr + 1) == addr)) {
     *value = cvalue;
@@ -547,7 +551,7 @@ static int butterfly_read_byte_eeprom(PROGRAMMER * pgm, AVRPART * p, AVRMEM * m,
 static int butterfly_page_erase(PROGRAMMER * pgm, AVRPART * p, AVRMEM * m, unsigned int addr)
 {
   if (strcmp(m->desc, "flash") == 0)
-    return -1;            /* not supported */
+    return 0;            /* assume good */
   if (strcmp(m->desc, "eeprom") == 0)
     return 0;             /* nothing to do */
   avrdude_message(MSG_INFO, "%s: butterfly_page_erase() called on memory type \"%s\"\n",
@@ -598,7 +602,7 @@ static int butterfly_paged_write(PROGRAMMER * pgm, AVRPART * p, AVRMEM * m,
   unsigned int max_addr = addr + n_bytes;
   char *cmd;
   unsigned int blocksize = PDATA(pgm)->buffersize;
-  int use_ext_addr = m->op[AVR_OP_LOAD_EXT_ADDR] != NULL;
+  int use_ext_addr = (m->op[AVR_OP_LOAD_EXT_ADDR] != NULL) | use_extended_addr;
   unsigned int wr_size = 2;
 
   if (strcmp(m->desc, "flash") && strcmp(m->desc, "eeprom"))
@@ -653,7 +657,7 @@ static int butterfly_paged_load(PROGRAMMER * pgm, AVRPART * p, AVRMEM * m,
   unsigned int max_addr = addr + n_bytes;
   int rd_size = 2;
   int blocksize = PDATA(pgm)->buffersize;
-  int use_ext_addr = m->op[AVR_OP_LOAD_EXT_ADDR] != NULL;
+  int use_ext_addr = (m->op[AVR_OP_LOAD_EXT_ADDR] != NULL) | use_extended_addr;
 
   /* check parameter syntax: only "flash" or "eeprom" is allowed */
   if (strcmp(m->desc, "flash") && strcmp(m->desc, "eeprom"))
