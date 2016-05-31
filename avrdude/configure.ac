@@ -208,7 +208,7 @@ AC_CHECK_HEADERS([ddk/hidsdi.h],,,[#include <windows.h>
 
 AH_TEMPLATE([HAVE_LIBPIGPIO],
             [Define if PI GPIO support is enabled via libpigpio])
-AC_CHECK_LIB([pigpiod_if2], [callback_cancel], [have_libpigpio=yes])
+AC_CHECK_LIB([pigpiod_if2], [callback_cancel], [have_libpigpio=yes], [], [-lpthread])
 if test x$have_libpigpio = xyes; then
    case $target in
        *-*-darwin*)
