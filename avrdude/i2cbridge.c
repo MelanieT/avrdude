@@ -150,67 +150,6 @@ static int i2cbridge_send_command(PROGRAMMER *pgm, char *buf, char *reply, int l
     return 0;
 }
 
-static int i2cbridge_send(PROGRAMMER *pgm, char *buf, size_t len)
-{
-    //printf("%*s\n", len, buf);
-    return serial_send(&pgm->fd, (unsigned char *) buf, len);
-}
-
-
-static int i2cbridge_recv(PROGRAMMER *pgm, char *buf, size_t len)
-{
-    int rv;
-
-    rv = serial_recv(&pgm->fd, (unsigned char *) buf, len);
-    if (rv < 0)
-    {
-        avrdude_message(MSG_INFO, "%s: i2cbridge_recv(): programmer is not responding\n",
-                        progname);
-        return -1;
-    }
-    //printf("%*s", len, buf);
-    return 0;
-}
-
-
-static int i2cbridge_vfy_cmd_sent(PROGRAMMER *pgm, char *errmsg)
-{
-    char buf[128];
-
-    memset(buf, 0, sizeof(buf));
-    do
-    {
-        if (i2cbridge_recv(pgm, buf + strlen(buf), 1) < 0)
-            return -1;
-        if (buf[0] == '\r' || buf[0] == '\n')
-            buf[0] = 0;
-    } while (strlen(buf) < sizeof(buf) - 1 && buf[strlen(buf) - 1] != '\n');
-
-    if (memcmp(buf, "OK\r\n", 4))
-    {
-        avrdude_message(MSG_INFO, "%s: error: programmer did not respond to command: %s, got %s\n",
-                        progname, errmsg, buf);
-        return -1;
-    }
-    return 0;
-}
-
-static int i2cbridge_vfy_cmd_sent2(PROGRAMMER *pgm, char *errmsg)
-{
-    char c[5] = {0, 0, 0, 0, 0};
-
-    i2cbridge_recv(pgm, c, 4);
-    if (memcmp(c, "OK\r\n", 4))
-    {
-        i2cbridge_drain(pgm, 0);
-        //avrdude_message(MSG_INFO, "%s: error: programmer did not respond to command: %s, got %s\n",
-        //                progname, errmsg, c);
-        return -1;
-    }
-    return 0;
-}
-
-
 static int i2cbridge_rdy_led(PROGRAMMER *pgm, int value)
 {
     /* Do nothing. */
@@ -425,11 +364,6 @@ static int i2cbridge_open(PROGRAMMER *pgm, char *port)
      */
     i2cbridge_drain (pgm, 0);
 
-    i2cbridge_send(pgm, " \x0d", 2);
-    i2cbridge_drain(pgm, 0);
-    i2cbridge_send(pgm, " \x0d", 2);
-    i2cbridge_drain(pgm, 0);
-
     i2cbridge_send_command(pgm, "open\r", NULL, 0);
     i2cbridge_send_command(pgm, "open\r", NULL, 0);
     if (i2cbridge_send_command(pgm, "open\r", NULL, 0) < 0)
@@ -437,12 +371,6 @@ static int i2cbridge_open(PROGRAMMER *pgm, char *port)
 
     if (i2cbridge_send_command(pgm, "clear\r", NULL, 0) < 0)
         return -1;
-
-//    i2cbridge_send(pgm, "open\r", 6);
-//    i2cbridge_vfy_cmd_sent2(pgm, "open");
-
-//    i2cbridge_send(pgm, "open\r", 6);
-//    i2cbridge_vfy_cmd_sent2(pgm, "open");
 
     sleep(1);
 
@@ -455,8 +383,7 @@ static int i2cbridge_open(PROGRAMMER *pgm, char *port)
 static void i2cbridge_close(PROGRAMMER *pgm)
 {
     i2cbridge_drain(pgm, 0);
-    i2cbridge_send(pgm, "close\r", 6);
-    i2cbridge_vfy_cmd_sent(pgm, "close");
+    i2cbridge_send_command(pgm, "close\r", NULL, 0);
     
     serial_close(&pgm->fd);
     pgm->fd.ifd = -1;
@@ -492,22 +419,6 @@ static int i2cbridge_write_byte(PROGRAMMER *pgm, AVRPART *p, AVRMEM *m,unsigned 
 static int i2cbridge_read_byte_flash(PROGRAMMER *pgm, AVRPART *p, AVRMEM *m,unsigned long addr, unsigned char *value)
 {
     return -1;
-    char buf[5];
-
-    i2cbridge_set_addr(pgm, addr);
-
-    i2cbridge_send(pgm, "read 1\r", 5);
-
-    /* Read back the program mem byte */
-    i2cbridge_recv(pgm, buf, 4);
-    buf[4] = 0;
-
-    int byte;
-    int cc = sscanf(buf, "%x", &byte);
-
-    *value = (unsigned char)byte;
-
-    return 0;
 }
 
 
@@ -593,19 +504,9 @@ static int i2cbridge_paged_load(PROGRAMMER *pgm, AVRPART *p, AVRMEM *m,unsigned 
     while (n_bytes)
     {
         sprintf(buf, "read 16\r");
-        i2cbridge_send(pgm, buf, strlen(buf));
-
-        memset(buf, 0, sizeof(buf));
-        do
-        {
-            if (i2cbridge_recv(pgm, buf + strlen(buf), 1) < 0)
-                return -1;
-        } while (strlen(buf) < sizeof(buf) - 1 && buf[strlen(buf) - 1] != '\n');
-        //avrdude_message(MSG_INFO, buf);
-
-        if (i2cbridge_vfy_cmd_sent(pgm, "read data") < 0)
+        if (i2cbridge_send_command(pgm, buf, buf, sizeof(buf)) < 0)
             return -1;
-        
+
         if (strncmp(buf, "DATA ", 5))
             return -1;
 
