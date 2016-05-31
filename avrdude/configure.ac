@@ -169,6 +169,23 @@ fi
 AC_SUBST(LIBHIDAPI, $LIBHIDAPI)
 
 
+AH_TEMPLATE([HAVE_LIBPIGPIO],
+            [Define if PI GPIO support is enabled via libpigpio])
+AC_CHECK_LIB([pigpiod_if2], [callback_cancel], [have_libpigpio=yes])
+if test x$have_libpigpio = xyes; then
+   case $target in
+       *-*-darwin*)
+               LIBUSB="-lpigpiod_if2 -framework CoreFoundation -framework IOKit"
+               ;;
+       *)
+               LIBUSB="-lpigpiod_if2"
+               ;;
+   esac
+   AC_DEFINE([HAVE_LIBPIGPIO])
+   AC_CHECK_HEADERS([pigpiod_if2.h])
+fi
+AC_SUBST(LIBPIGPIO, $LIBPIGPIO)
+
 AH_TEMPLATE([HAVE_LIBFTDI1],
             [Define if FTDI support is enabled via libftdi1])
 AH_TEMPLATE([HAVE_LIBFTDI],
