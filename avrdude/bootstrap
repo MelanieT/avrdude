@@ -13,7 +13,7 @@ set -x
 
 rm -rf autom4te.cache
 
-libtoolize
+glibtoolize
 
 ${ACLOCAL}
 ${AUTOHEADER}

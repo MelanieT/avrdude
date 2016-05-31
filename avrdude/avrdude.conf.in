@@ -875,6 +875,13 @@ programmer
 ;
 
 programmer
+  id    = "i2cbridge";
+  desc  = "Debugunit i2cbridge software";
+  type  = "i2cbridge";
+  connection_type = serial;
+;
+
+programmer
   id    = "butterfly";
   desc  = "Atmel Butterfly Development Board";
   type  = "butterfly";

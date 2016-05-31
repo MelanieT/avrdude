@@ -36,6 +36,7 @@
 #include "flip1.h"
 #include "flip2.h"
 #include "ft245r.h"
+#include "i2cbridge.h"
 #include "jtagmkI.h"
 #include "jtagmkII.h"
 #include "jtag3.h"
@@ -69,6 +70,7 @@ const PROGRAMMER_TYPE programmers_types[] = {
         {"flip1", flip1_initpgm, flip1_desc},
         {"flip2", flip2_initpgm, flip2_desc},
         {"ftdi_syncbb", ft245r_initpgm, ft245r_desc},
+        {"i2cbridge", i2cbridge_initpgm, i2cbridge_desc},
         {"jtagmki", jtagmkI_initpgm, jtagmkI_desc},
         {"jtagmkii", jtagmkII_initpgm, jtagmkII_desc},
         {"jtagmkii_avr32", jtagmkII_avr32_initpgm, jtagmkII_avr32_desc},

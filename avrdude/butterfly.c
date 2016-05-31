@@ -49,7 +49,7 @@
 
 #include "butterfly.h"
 
-int use_extended_addr = 0;
+static int use_extended_addr = 0;
 
 /*
  * Private data for this programmer.
