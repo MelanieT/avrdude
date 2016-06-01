@@ -222,10 +222,10 @@ else
    if test x$have_libpigpiod_if2 = xyes; then
       case $target in
           *-*-darwin*)
-	          LIBPIGPIO="-lpigpiod_if2 -framework CoreFoundation -framework IOKit"
+	          LIBPIGPIOD_IF2="-lpigpiod_if2 -framework CoreFoundation -framework IOKit"
 	          ;;
           *)
-	          LIBPIGPIO="-lpigpiod_if2"
+	          LIBPIGPIOD_IF2="-lpigpiod_if2"
 	          ;;
       esac
       AC_DEFINE([HAVE_LIBPIGPIOD_IF2])
