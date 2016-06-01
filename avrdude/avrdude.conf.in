@@ -889,6 +889,13 @@ programmer
 ;
 
 programmer
+  id    = "pigpioi2c";
+  desc  = "Raspberry Pi GPIO/I2C programmer";
+  type  = "pigpioi2c";
+  connection_type = serial;
+;
+
+programmer
   id    = "avr109";
   desc  = "Atmel AppNote AVR109 Boot Loader";
   type  = "butterfly";

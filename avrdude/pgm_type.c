@@ -33,6 +33,7 @@
 #include "avrftdi.h"
 #include "buspirate.h"
 #include "butterfly.h"
+#include "pigpioi2c.h"
 #include "flip1.h"
 #include "flip2.h"
 #include "ft245r.h"
@@ -61,6 +62,7 @@ const PROGRAMMER_TYPE programmers_types[] = {
         {"buspirate_bb", buspirate_bb_initpgm, buspirate_bb_desc},
         {"butterfly", butterfly_initpgm, butterfly_desc},
         {"butterfly_mk", butterfly_mk_initpgm, butterfly_mk_desc},
+	{"pigpioi2c", pigpioi2c_initpgm, pigpioi2c_desc},
         {"dragon_dw", jtagmkII_dragon_dw_initpgm, jtagmkII_dragon_dw_desc},
         {"dragon_hvsp", stk500v2_dragon_hvsp_initpgm, stk500v2_dragon_hvsp_desc},
         {"dragon_isp", stk500v2_dragon_isp_initpgm, stk500v2_dragon_isp_desc},

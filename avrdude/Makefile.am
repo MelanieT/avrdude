@@ -66,7 +66,7 @@ avrdude_CFLAGS   = @ENABLE_WARNINGS@
 libavrdude_a_CFLAGS   = @ENABLE_WARNINGS@
 libavrdude_la_CFLAGS  = $(libavrdude_a_CFLAGS)
 
-avrdude_LDADD  = $(top_builddir)/$(noinst_LIBRARIES) @LIBPIGPIO@ @LIBUSB_1_0@ @LIBHIDAPI@ @LIBUSB@ @LIBFTDI1@ @LIBFTDI@ @LIBHID@ @LIBELF@ @LIBPTHREAD@ -lm
+avrdude_LDADD  = $(top_builddir)/$(noinst_LIBRARIES) @LIBPIGPIO@ @LIBPIGPIOD_IF2@ @LIBUSB_1_0@ @LIBHIDAPI@ @LIBUSB@ @LIBFTDI1@ @LIBFTDI@ @LIBHID@ @LIBELF@ @LIBPTHREAD@ -lm
 
 bin_PROGRAMS = avrdude
 
@@ -109,8 +109,10 @@ libavrdude_a_SOURCES = \
 	buspirate.h \
 	butterfly.c \
 	butterfly.h \
-    i2cbridge.c \
-    i2cbridge.h \
+	i2cbridge.c \
+	i2cbridge.h \
+	pigpioi2c.h \
+	pigpioi2c.c \
 	config.c \
 	config.h \
 	confwin.c \
