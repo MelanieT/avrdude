@@ -109,8 +109,10 @@ libavrdude_a_SOURCES = \
 	buspirate.h \
 	butterfly.c \
 	butterfly.h \
-    i2cbridge.c \
-    i2cbridge.h \
+	i2cbridge.c \
+	i2cbridge.h \
+	pigpioi2c.h \
+	pigpioi2c.c \
 	config.c \
 	config.h \
 	confwin.c \
