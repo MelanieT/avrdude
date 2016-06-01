@@ -206,22 +206,33 @@ AC_CHECK_HEADERS([ddk/hidsdi.h],,,[#include <windows.h>
 #include <setupapi.h>])
 
 
+AH_TEMPLATE([HAVE_LIBPIGPIOD_IF2],
+            [Define if PI GPIO support is enabled via libpigpiod_if2])
+AC_CHECK_LIB([pigpiod_if2], [callback_cancel], [have_libpigpiod_if2=yes], [], [-lpthread])
 AH_TEMPLATE([HAVE_LIBPIGPIO],
             [Define if PI GPIO support is enabled via libpigpio])
-AC_CHECK_LIB([pigpiod_if2], [callback_cancel], [have_libpigpio=yes], [], [-lpthread])
+AC_CHECK_LIB([pigpio], [gpioInitialise], [have_libpigpio=yes], [], [-lpthread])
+
 if test x$have_libpigpio = xyes; then
-   case $target in
-       *-*-darwin*)
-               LIBPIGPIO="-lpigpiod_if2 -framework CoreFoundation -framework IOKit"
-               ;;
-       *)
-               LIBPIGPIO="-lpigpiod_if2"
-               ;;
-   esac
+   LIBPIGPIO="-lpigpio"
    AC_DEFINE([HAVE_LIBPIGPIO])
-   AC_CHECK_HEADERS([pigpiod_if2.h])
+   AC_CHECK_HEADERS([pigpio.h])
+   AC_SUBST(LIBPIGPIO, $LIBPIGPIO)
+else
+   if test x$have_libpigpiod_if2 = xyes; then
+      case $target in
+          *-*-darwin*)
+	          LIBPIGPIO="-lpigpiod_if2 -framework CoreFoundation -framework IOKit"
+	          ;;
+          *)
+	          LIBPIGPIO="-lpigpiod_if2"
+	          ;;
+      esac
+      AC_DEFINE([HAVE_LIBPIGPIOD_IF2])
+      AC_CHECK_HEADERS([pigpiod_if2.h])
+      AC_SUBST(LIBPIGPIOD_IF2, $LIBPIGPIOD_IF2)
+   fi
 fi
-AC_SUBST(LIBPIGPIO, $LIBPIGPIO)
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -573,6 +584,12 @@ if test x$have_libpigpio = xyes; then
    echo "DO HAVE    pigpio"
 else
    echo "DON'T HAVE pigpio"
+fi
+
+if test x$have_libpigpiod_if2 = xyes; then
+   echo "DO HAVE    pigpiod_if2"
+else
+   echo "DON'T HAVE pigpiod_if2"
 fi
 
 if test x$enabled_doc = xyes; then
