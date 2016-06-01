@@ -889,10 +889,11 @@ programmer
 ;
 
 programmer
-  id    = "pigpio-i2c";
+  id    = "pigpioi2c";
   desc  = "Raspberry Pi GPIO/I2C programmer";
   type  = "pigpioi2c";
   connection_type = serial;
+;
 
 programmer
   id    = "avr109";
