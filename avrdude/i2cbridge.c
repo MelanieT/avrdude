@@ -194,7 +194,10 @@ static int i2cbridge_chip_erase(PROGRAMMER *pgm, AVRPART *p)
         {
             sleep(2);
             if (i2cbridge_send_command(pgm, "erase\r", NULL, 0) < 0)
-            return -1;
+            {
+                avrdude_message(MSG_INFO, "Failed to erase chip\n");
+                return -1;
+            }
         }
     }
 
@@ -272,23 +275,7 @@ static int i2cbridge_parseextparms(PROGRAMMER * pgm, LISTID extparms)
  */
 static int i2cbridge_initialize(PROGRAMMER *pgm, AVRPART *p)
 {
-    /*
-     * Send some CR to activate i2cbridge bootloader.
-     */
-    if (PDATA(pgm)->device == 0)
-    {
-        avrdude_message(MSG_INFO, "Device address not set, use -x device=<addr>\n");
-        return -1;
-    }
-
     char buf[128];
-    sprintf(buf, "dev %02x\r", PDATA(pgm)->device);
-
-    if (i2cbridge_send_command(pgm, buf, NULL, 0) < 0)
-        return -1;
-
-    avrdude_message(MSG_INFO, "Device address sent\n");
-
     int i;
     for (i = 0 ; i < 3 ; i++)
     {
@@ -310,7 +297,10 @@ static int i2cbridge_initialize(PROGRAMMER *pgm, AVRPART *p)
         sleep(2);
     }
     if (i == 3)
+    {
+        avrdude_message(MSG_INFO, "Programmer returned invalid data\n");
         return -1;
+    }
 
     //PDATA(pgm)->buffersize = (unsigned int) (unsigned char) c << 8;
 
@@ -343,6 +333,12 @@ static void i2cbridge_enable(PROGRAMMER *pgm)
 
 static int i2cbridge_open(PROGRAMMER *pgm, char *port)
 {
+    if (PDATA(pgm)->device == 0)
+    {
+        avrdude_message(MSG_INFO, "Device address not set, use -x device=<addr>\n");
+        return -1;
+    }
+
     union pinfo pinfo;
 
     strcpy(pgm->port, port);
@@ -359,18 +355,34 @@ static int i2cbridge_open(PROGRAMMER *pgm, char *port)
         return -1;
     }
 
+    avrdude_message(MSG_INFO, "Connecting to programmer\n");
+
     /*
      * drain any extraneous input
      */
     i2cbridge_drain (pgm, 0);
 
+    char buf[128];
+    sprintf(buf, "dev %02x\r", PDATA(pgm)->device);
+
+    if (i2cbridge_send_command(pgm, buf, NULL, 0) < 0)
+        return -1;
+
+    avrdude_message(MSG_INFO, "Device address sent\n");
+
     i2cbridge_send_command(pgm, "open\r", NULL, 0);
     i2cbridge_send_command(pgm, "open\r", NULL, 0);
     if (i2cbridge_send_command(pgm, "open\r", NULL, 0) < 0)
+    {
+        avrdude_message(MSG_INFO, "Unable to open programmer\n");
         return -1;
+    }
 
     if (i2cbridge_send_command(pgm, "clear\r", NULL, 0) < 0)
+    {
+        avrdude_message(MSG_INFO, "Clearing buffer failed\n");
         return -1;
+    }
 
     sleep(1);
 
