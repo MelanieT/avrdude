@@ -38,7 +38,6 @@
 
 #include "i2cbridge.h"
 
-static int use_extended_addr = 0;
 static unsigned int current_addr = 0xffff;
 
 /*
@@ -447,8 +446,6 @@ static int i2cbridge_page_erase(PROGRAMMER *pgm, AVRPART *p, AVRMEM *m, unsigned
 
 static int i2cbridge_read_byte(PROGRAMMER *pgm, AVRPART *p, AVRMEM *m,unsigned long addr, unsigned char *value)
 {
-    char cmd;
-
     if (strcmp(m->desc, "flash") == 0)
     {
         return i2cbridge_read_byte_flash(pgm, p, m, addr, value);
@@ -548,8 +545,6 @@ static int i2cbridge_paged_load(PROGRAMMER *pgm, AVRPART *p, AVRMEM *m,unsigned 
 /* Signature byte reads are always 3 bytes. */
 static int i2cbridge_read_sig_bytes(PROGRAMMER *pgm, AVRPART *p, AVRMEM *m)
 {
-    unsigned char tmp;
-
     if (m->size < 3)
     {
         avrdude_message(MSG_INFO, "%s: memsize too small for sig byte read", progname);
