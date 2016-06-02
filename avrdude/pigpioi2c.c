@@ -69,7 +69,7 @@ struct pdata
 
 static short swabs(short in)
 {
-#ifdef __ORDER_BIG_ENDIAN__
+#if __BYTE_ORDER == __BIG_ENDIAN
     union
     {
         short x;
