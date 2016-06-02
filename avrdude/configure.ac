@@ -234,7 +234,7 @@ else
    fi
 fi
 
-AC_CHECK_HEADERS([linux/i2c.h linux/i2c-dev.h])
+AC_CHECK_HEADERS([linux/i2c.h linux/i2c-dev.h], [have_i2c_h=yes])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -426,6 +426,17 @@ else
 	confsubst="$confsubst -e /^@HAVE_LINUXGPIO_BEGIN@/,/^@HAVE_LINUXGPIO_END@/d"
 fi
 
+if test x$have_libpigpio = xyes -o x$have_libpigpiod_if2 = xyes; then
+	confsubst="$confsubst -e /^@HAVE_PIGPIO_/d"
+else
+	confsubst="$confsubst -e /^@HAVE_PIGPIO_BEGIN@/,/^@HAVE_PIGPIO_END@/d"
+fi
+
+if test x$have_i2c_h = xyes; then
+	confsubst="$confsubst -e /^@HAVE_PII2C_/d"
+else
+	confsubst="$confsubst -e /^@HAVE_PII2C_BEGIN@/,/^@HAVE_PII2C_END@/d"
+fi
 
 # If we are compiling with gcc, enable all warning and make warnings errors.
 if test "$GCC" = yes; then
