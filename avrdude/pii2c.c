@@ -96,6 +96,7 @@ static void pii2c_teardown(PROGRAMMER *pgm)
     free(pgm->cookie);
 }
 
+#if 0
 static void pii2c_hexdump(uint8_t *data, int len)
 {
     int i;
@@ -105,6 +106,7 @@ static void pii2c_hexdump(uint8_t *data, int len)
 
     printf("\n");
 }
+#endif
 
 static int pii2c_comm(PROGRAMMER *pgm, uint8_t *buf, int len, uint8_t * reply, int reply_len)
 {
@@ -126,7 +128,7 @@ static int pii2c_comm(PROGRAMMER *pgm, uint8_t *buf, int len, uint8_t * reply, i
 
 	memset(reply, 0, reply_len);
 
-    printf("Send: "); pii2c_hexdump(buf, len);
+    //printf("Send: "); pii2c_hexdump(buf, len);
 
     int cc;
     if ((cc =ioctl(PDATA(pgm)->fd, I2C_RDWR, &rdwr)) < 0)
@@ -135,7 +137,7 @@ static int pii2c_comm(PROGRAMMER *pgm, uint8_t *buf, int len, uint8_t * reply, i
         return -1;
     }
 
-    printf("Recv: "); pii2c_hexdump(reply, reply_len);
+    //printf("Recv: "); pii2c_hexdump(reply, reply_len);
 
     return 0;
 }
