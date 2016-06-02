@@ -26,6 +26,8 @@
 
 #include "ac_cfg.h"
 
+#if HAVE_LINUX_I2C_DEV_H && HAVE_LINUX_I2C_H
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -646,3 +648,5 @@ void pii2c_initpgm(PROGRAMMER *pgm)
     pgm->teardown       = pii2c_teardown;
     pgm->flag = 0;
 }
+
+#endif // HAVE_LINUX_I2C_DEV_H && HAVE_LINUX_I2C_H

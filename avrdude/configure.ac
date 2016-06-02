@@ -234,6 +234,8 @@ else
    fi
 fi
 
+AC_CHECK_HEADERS([linux/i2c.h linux/i2c-dev.h])
+
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 AC_HEADER_TIME

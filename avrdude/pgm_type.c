@@ -35,6 +35,8 @@
 #include "butterfly.h"
 #if HAVE_PIGPIOD_IF2_H || HAVE_PIGPIO_H
 #include "pigpioi2c.h"
+#endif
+#if HAVE_LINUX_I2C_DEV_H && HAVE_LINUX_I2C_H
 #include "pii2c.h"
 #endif
 #include "flip1.h"
@@ -68,7 +70,9 @@ const PROGRAMMER_TYPE programmers_types[] = {
 #if HAVE_PIGPIOD_IF2_H || HAVE_PIGPIO_H
         {"pigpioi2c", pigpioi2c_initpgm, pigpioi2c_desc},
 #endif
+#if HAVE_LINUX_I2C_DEV_H && HAVE_LINUX_I2C_H
         {"pii2c", pii2c_initpgm, pii2c_desc},
+#endif
         {"dragon_dw", jtagmkII_dragon_dw_initpgm, jtagmkII_dragon_dw_desc},
         {"dragon_hvsp", stk500v2_dragon_hvsp_initpgm, stk500v2_dragon_hvsp_desc},
         {"dragon_isp", stk500v2_dragon_isp_initpgm, stk500v2_dragon_isp_desc},
