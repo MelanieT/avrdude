@@ -899,6 +899,8 @@ programmer
 
 @HAVE_PIGPIO_END@
 
+@HAVE_PII2C_BEGIN@
+
 programmer
   id    = "pii2c";
   desc  = "Raspberry Pi native I2C programmer";
@@ -906,7 +908,7 @@ programmer
   connection_type = serial;
 ;
 
-@HAVE_PII2C_BEGIN@
+@HAVE_PII2C_END@
 
 programmer
   id    = "avr109";
@@ -914,8 +916,6 @@ programmer
   type  = "butterfly";
   connection_type = serial;
 ;
-
-@HAVE_PII2C_END@
 
 programmer
   id    = "avr911";
