@@ -208,10 +208,10 @@ AC_CHECK_HEADERS([ddk/hidsdi.h],,,[#include <windows.h>
 
 AH_TEMPLATE([HAVE_LIBPIGPIOD_IF2],
             [Define if PI GPIO support is enabled via libpigpiod_if2])
-AC_CHECK_LIB([pigpiod_if2], [callback_cancel], [have_libpigpiod_if2=yes], [], [-lpthread])
+AC_CHECK_LIB([pigpiod_if2], [callback_cancel], [have_libpigpiod_if2=yes], [], [-lpthread -lrt])
 AH_TEMPLATE([HAVE_LIBPIGPIO],
             [Define if PI GPIO support is enabled via libpigpio])
-AC_CHECK_LIB([pigpio], [gpioInitialise], [have_libpigpio=yes], [], [-lpthread])
+AC_CHECK_LIB([pigpio], [gpioInitialise], [have_libpigpio=yes], [], [-lpthread -lrt])
 
 if test x$have_libpigpio = xyes; then
    LIBPIGPIO="-lpigpio"
