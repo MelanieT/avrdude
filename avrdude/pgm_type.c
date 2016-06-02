@@ -68,7 +68,7 @@ const PROGRAMMER_TYPE programmers_types[] = {
 #if HAVE_PIGPIOD_IF2_H || HAVE_PIGPIO_H
         {"pigpioi2c", pigpioi2c_initpgm, pigpioi2c_desc},
 #endif
-        {"pii2c", pii2c_initpgm, pig2c_desc},
+        {"pii2c", pii2c_initpgm, pii2c_desc},
         {"dragon_dw", jtagmkII_dragon_dw_initpgm, jtagmkII_dragon_dw_desc},
         {"dragon_hvsp", stk500v2_dragon_hvsp_initpgm, stk500v2_dragon_hvsp_desc},
         {"dragon_isp", stk500v2_dragon_isp_initpgm, stk500v2_dragon_isp_desc},

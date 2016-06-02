@@ -896,9 +896,9 @@ programmer
 ;
 
 programmer
-  id    = "pig2c";
+  id    = "pii2c";
   desc  = "Raspberry Pi native I2C programmer";
-  type  = "pig2c";
+  type  = "pii2c";
   connection_type = serial;
 ;
 

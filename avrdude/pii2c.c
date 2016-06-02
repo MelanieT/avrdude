@@ -28,10 +28,15 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <fcntl.h>
 #include <string.h>
 #include <errno.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <linux/i2c.h>
+#include <linux/i2c-dev.h>
+#include <sys/ioctl.h>
+#include <errno.h>
 
 #include "avrdude.h"
 #include "libavrdude.h"
@@ -50,16 +55,14 @@ struct pdata
     unsigned short buffersize;
     unsigned short memsize;
     char address[64];
-    char bus[16];
     int fd;
-#endif
 };
 
 #define PDATA(pgm) ((struct pdata *) (pgm->cookie))
 
 static short swabs(short in)
 {
-#ifdef __ORDER_BIG_ENDIAN__
+#if __BYTE_ORDER == __BIG_ENDIAN
     union
     {
         short x;
@@ -93,11 +96,48 @@ static void pii2c_teardown(PROGRAMMER *pgm)
     free(pgm->cookie);
 }
 
+static void pii2c_hexdump(uint8_t *data, int len)
+{
+    int i;
+
+    for (i = 0 ; i < len ; i++)
+        printf("%02x ", data[i]);
+
+    printf("\n");
+}
+
 static int pii2c_comm(PROGRAMMER *pgm, uint8_t *buf, int len, uint8_t * reply, int reply_len)
 {
+    struct i2c_msg msgs[2];
+    struct i2c_rdwr_ioctl_data rdwr;
+
+    rdwr.msgs = msgs;
+    rdwr.nmsgs = 2;
+
+    msgs[0].addr = PDATA(pgm)->device;
+    msgs[0].flags = 0;
+    msgs[0].len = len;
+    msgs[0].buf = buf;
+
+    msgs[1].addr = PDATA(pgm)->device;
+    msgs[1].flags = I2C_M_RD;
+    msgs[1].len = reply_len;
+    msgs[1].buf = reply;
+
 	memset(reply, 0, reply_len);
 
-	return -1;
+    printf("Send: "); pii2c_hexdump(buf, len);
+
+    int cc;
+    if ((cc =ioctl(PDATA(pgm)->fd, I2C_RDWR, &rdwr)) < 0)
+    {
+        printf("Error in ioctl: %d\n", errno);
+        return -1;
+    }
+
+    printf("Recv: "); pii2c_hexdump(reply, reply_len);
+
+    return 0;
 }
 
 static int pii2c_send_16(PROGRAMMER *pgm, uint8_t command, uint16_t param, uint8_t *reply, int reply_len)
@@ -138,14 +178,14 @@ static int pii2c_send_clear_command(PROGRAMMER *pgm)
 	return 0;
 }
 
-static int pii2c_send_info_command(PROGRAMMER *pgm, uint16_t *blocksize, uint16_t *ramsize)
+static int pii2c_send_info_command(PROGRAMMER *pgm, uint16_t *blocksize, uint16_t *memsize)
 {
 #pragma pack(1)
 	struct
 	{
 		uint8_t code;
 		uint16_t blocksize;
-		uint16_t ramsize;
+		uint16_t memsize;
 	} reply;
 #pragma pack()
 
@@ -159,7 +199,7 @@ static int pii2c_send_info_command(PROGRAMMER *pgm, uint16_t *blocksize, uint16_
 	}
 	// TODO: Byte swap these on big endian platforms
 	*blocksize = swabs(reply.blocksize);
-	*ramsize = swabs(reply.ramsize);
+	*memsize = swabs(reply.memsize);
 
 	return 0;
 }
@@ -345,14 +385,6 @@ static int pii2c_parseextparms(PROGRAMMER * pgm, LISTID extparms)
 
             PDATA(pgm)->device = dev;
         }
-        else if (!strncmp(extended_param, "host=", 5))
-        {
-        	strcpy(PDATA(pgm)->address, extended_param + 5);
-        }
-        else if (!strncmp(extended_param, "port=", 5))
-        {
-        	strcpy(PDATA(pgm)->port, extended_param + 5);
-        }
     }
     return 0;
 }
@@ -395,13 +427,22 @@ static int pii2c_open(PROGRAMMER *pgm, char *port)
         avrdude_message(MSG_INFO, "Device address not set, use -x device=<addr>\n");
         return -1;
     }
-    if (PDATA(pgm)->bus[0] == 0)
+
+    strcpy(pgm->port, port);
+
+    PDATA(pgm)->fd = open(pgm->port, O_RDWR);
+
+    if (PDATA(pgm)->fd < 0)
     {
-        avrdude_message(MSG_INFO, "Host bus not set, use -x bus=<addr>\n");
+        avrdude_message(MSG_INFO, "Could not open bus %s\n", port);
         return -1;
     }
 
-    strcpy(pgm->port, port);
+//    if (ioctl(PDATA(pgm)->fd, I2C_SLAVE, PDATA(pgm)->device) < 0)
+//    {
+//        avrdude_message(MSG_INFO, "Slave %02x is invalid or in use by another program\n", PDATA(pgm)->device);
+//        return -1;
+//    }
 
     int i;
     for (i = 0 ; i < MAX_OPEN_RETRIES ; i++)
@@ -422,7 +463,7 @@ static int pii2c_open(PROGRAMMER *pgm, char *port)
     	avrdude_message(MSG_INFO, "Timeout while waiting to open device\n");
     	return -1;
     }
-    avrdude_message(MSG_INFO, "Device reports blocksize %d and ramsize %d\n", PDATA(pgm)->buffersize, PDATA(pgm)->memsize);
+    avrdude_message(MSG_INFO, "Device reports blocksize %d and memsize %d\n", PDATA(pgm)->buffersize, PDATA(pgm)->memsize);
 
     if (pii2c_send_clear_command(pgm) < 0)
         return -1;
@@ -437,6 +478,7 @@ static int pii2c_open(PROGRAMMER *pgm, char *port)
 static void pii2c_close(PROGRAMMER *pgm)
 {
     pii2c_send_prog_exit_command(pgm);
+    close(PDATA(pgm)->fd);
     pgm->fd.ifd = -1;
 }
 
