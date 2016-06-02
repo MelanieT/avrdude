@@ -26,6 +26,7 @@
 
 #include "ac_cfg.h"
 
+#if HAVE_PIGPIOD_IF2_H || HAVE_PIGPIO_H
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -637,3 +638,5 @@ void pigpioi2c_initpgm(PROGRAMMER *pgm)
     pgm->teardown       = pigpioi2c_teardown;
     pgm->flag = 0;
 }
+
+#endif // HAVE_PIGPIOD_IF2_H

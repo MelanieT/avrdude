@@ -21,6 +21,10 @@
 #ifndef pigpioi2c_h
 #define pigpioi2c_h
 
+#include "ac_cfg.h"
+
+#if HAVE_PIGPIOD_IF2_H || HAVE_PIGPIO_H
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -44,4 +48,5 @@ void pigpioi2c_initpgm (PROGRAMMER *pgm);
 }
 #endif
 
+#endif // HAVE_PIGPIOD_IF2_H
 #endif /* pigpioi2c_h */
