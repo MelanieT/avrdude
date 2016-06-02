@@ -27,6 +27,7 @@
 #include "ac_cfg.h"
 
 #if HAVE_PIGPIOD_IF2_H || HAVE_PIGPIO_H
+//#define USE_BITBANG 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -59,10 +60,32 @@ struct pdata
     char address[64];
     char port[16];
     int handle;
+#if !USE_BITBANG
     int target_dev;
+#endif
 };
 
 #define PDATA(pgm) ((struct pdata *) (pgm->cookie))
+
+static short swabs(short in)
+{
+#ifdef __ORDER_BIG_ENDIAN__
+    union
+    {
+        short x;
+        uint8_t y[2];
+    } swap;
+
+    swap.x = in;
+    uint8_t tmp = swap.y[0];
+    swap.y[0] = swap.y[1];
+    swap.y[1] = tmp;
+
+    in = swap.x;
+#endif
+
+    return in;
+}
 
 static void pigpioi2c_setup(PROGRAMMER *pgm)
 {
@@ -80,10 +103,35 @@ static void pigpioi2c_teardown(PROGRAMMER *pgm)
     free(pgm->cookie);
 }
 
-#if HAVE_LIBPIGPIOD_IF2
+#if HAVE_LIBPIGPIOD_IF2 || USE_BITBANG
 static int pigpioi2c_comm(PROGRAMMER *pgm, uint8_t *buf, int len, uint8_t * reply, int reply_len)
 {
 	memset(reply, 0, reply_len);
+#if USE_BITBANG
+	uint8_t send_buffer[32];
+	int send_len = len + 10;
+	send_buffer[0] = 4; // set address
+	send_buffer[1] = PDATA(pgm)->device;
+	send_buffer[2] = 2;
+	send_buffer[3] = 7; //write
+	send_buffer[4] = len;
+	memcpy(&send_buffer[5], buf, len);
+	send_buffer[5 + len + 0] = 2; //start
+	send_buffer[5 + len + 1] = 6; //read
+	send_buffer[5 + len + 2] = reply_len;
+	send_buffer[5 + len + 3] = 3;
+	send_buffer[5 + len + 4] = 0; //end
+
+    int j;
+    for (j = 0 ; j < send_len ; j++)
+        printf("%02x ", send_buffer[j]);
+    printf("\n");
+	int ret = bbI2CZip(2, send_buffer, send_len, reply, reply_len);
+//    gpioSetMode(2, PI_INPUT);
+//    gpioSetMode(3, PI_INPUT);
+//    gpioSetPullUpDown(2, PI_PUD_UP);
+//    gpioSetPullUpDown(3, PI_PUD_UP);
+#else
 	uint8_t send_buffer[32];
 	int send_len = len + 8;
 	send_buffer[0] = 2; //combined mode on
@@ -96,6 +144,7 @@ static int pigpioi2c_comm(PROGRAMMER *pgm, uint8_t *buf, int len, uint8_t * repl
 	send_buffer[5 + len + 1] = reply_len;
 	send_buffer[5 + len + 2] = 0; //end
 	int ret = i2c_zip(PDATA(pgm)->handle, PDATA(pgm)->target_dev, send_buffer, send_len, reply, reply_len);
+#endif
 	printf("DEBUG i2c_zip return %d on %02x reply ", ret, buf[0]);
 	int i = 0;
 	for(i = 0; i < reply_len; i++)
@@ -112,14 +161,33 @@ static int pigpioi2c_comm(PROGRAMMER *pgm, uint8_t *buf, int len, uint8_t * repl
 }
 #endif
 
-#if HAVE_LIBPIGPIO
+#if HAVE_LIBPIGPIO && !USE_BITBANG
 static int pigpioi2c_comm(PROGRAMMER *pgm, uint8_t *buf, int len, uint8_t * reply, int reply_len)
 {
+    int ret;
     i2cSwitchCombined(1);
-    if (i2cWriteDevice(PDATA(pgm)->target_dev, buf, len) < 0)
+    if ((ret =i2cWriteDevice(PDATA(pgm)->target_dev, buf, len)) < 0)
+    {
+        avrdude_message(MSG_INFO, "WriteDevice returned %d\n", ret);
         return -1;
-    if (i2cReadDevice(PDATA(pgm)->target_dev, reply, reply_len) < 0)
+    }
+    if ((ret = i2cReadDevice(PDATA(pgm)->target_dev, reply, reply_len)) < 0)
+    {
+        avrdude_message(MSG_INFO, "ReadDevice returned %d\n", ret);
         return -1;
+    }
+	printf("DEBUG i2c_zip return %d on %02x reply ", ret, buf[0]);
+	int i = 0;
+	for(i = 0; i < reply_len; i++)
+	{
+		printf("%02x ", reply[i]);
+	}
+	printf(" ##\n");
+	if (ret < 0 && buf[0] != EXIT_PROG_MODE)
+	{
+		printf("ERROR: %d\n", ret);
+		return -1;
+	}
     return 0;
 }
 #endif
@@ -129,7 +197,7 @@ static int pigpioi2c_send_16(PROGRAMMER *pgm, uint8_t command, uint16_t param, u
 {
 	char buffer[3];
 	buffer[0] = command;
-	*(uint16_t *)&buffer[1] = param;
+	*(uint16_t *)&buffer[1] = swabs(param);
 	if( pigpioi2c_comm(pgm, buffer, 3, reply, reply_len) < 0 )
 		return -1;
 	return 0;
@@ -183,8 +251,8 @@ static int pigpioi2c_send_info_command(PROGRAMMER *pgm, uint16_t *blocksize, uin
 		return -1;
 	}
 	// TODO: Byte swap these on big endian platforms
-	*blocksize = reply.blocksize;
-	*ramsize = reply.ramsize;
+	*blocksize = swabs(reply.blocksize);
+	*ramsize = swabs(reply.ramsize);
 
 	return 0;
 }
@@ -241,7 +309,7 @@ static int pigpioi2c_send_data_block(PROGRAMMER *pgm, uint16_t offset, uint8_t *
 	uint8_t buf[32];
 
 	buf[0] = WRITE_DATA_BYTES;
-	*(uint16_t *)&buf[1] = offset;
+	*(uint16_t *)&buf[1] = swabs(offset);
 	memcpy(&buf[3], data, 16);
 
 	uint8_t reply;
@@ -438,7 +506,17 @@ static int pigpioi2c_open(PROGRAMMER *pgm, char *port)
     //initialise pigpiod
 #if HAVE_LIBPIGPIO
     gpioInitialise();
+    gpioSetMode(2, PI_INPUT);
+    gpioSetMode(3, PI_INPUT);
+    gpioSetPullUpDown(2, PI_PUD_UP);
+    gpioSetPullUpDown(3, PI_PUD_UP);
+#if USE_BITBANG
+    if (bbI2COpen(2,3,50000) < 0)
+        return -1;
+#else
     PDATA(pgm)->target_dev = i2cOpen(1, PDATA(pgm)->device, 0);
+    avrdude_message(MSG_INFO, "Opened local I2C\n");
+#endif
 #endif
 #if HAVE_LIBPIGPIOD_IF2
     PDATA(pgm)->handle = pigpio_start(PDATA(pgm)->address, PDATA(pgm)->port);
@@ -449,12 +527,14 @@ static int pigpioi2c_open(PROGRAMMER *pgm, char *port)
     }
     PDATA(pgm)->target_dev = i2c_open(PDATA(pgm)->handle, 1, PDATA(pgm)->device, 0);
 #endif
+#if !USE_BITBANG
     if (PDATA(pgm)->target_dev < 0 )
     {
     	//TODO: add more specific error reporting
         avrdude_message(MSG_INFO, "Error aquiring i2c device");
         return -1;
     }
+#endif
 
     int i;
     for (i = 0 ; i < MAX_OPEN_RETRIES ; i++)
@@ -495,7 +575,11 @@ static void pigpioi2c_close(PROGRAMMER *pgm)
     i2c_close(PDATA(pgm)->handle, PDATA(pgm)->target_dev);
 #endif
 #if HAVE_LIBPIGPIO
+#if !USE_BITBANG
     i2cClose(PDATA(pgm)->target_dev);
+#else
+    bbI2CClose(2);
+#endif
     gpioTerminate();
 #endif
     pgm->fd.ifd = -1;

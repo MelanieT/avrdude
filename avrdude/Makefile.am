@@ -113,6 +113,8 @@ libavrdude_a_SOURCES = \
 	i2cbridge.h \
 	pigpioi2c.h \
 	pigpioi2c.c \
+	pii2c.h \
+	pii2c.c \
 	config.c \
 	config.h \
 	confwin.c \
